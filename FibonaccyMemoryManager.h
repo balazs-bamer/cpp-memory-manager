@@ -181,7 +181,7 @@ public:
 
   size_t getLargestFreeIndex() const noexcept;
 
-  size_t getLargestFreeUserBlockSize() const noexcept {
+  size_t getMaxFreeUserBlockSize() const noexcept {
     size_t fibonacciIndex = getLargestFreeIndex();
     return fibonacciIndex < mFibonacciCount ? getUserBlockSize(fibonacciIndex) : 0u;
   }
@@ -265,6 +265,22 @@ public:
   template<typename tClass>
   static void _deleteArray(tClass* aPointer) {
     delete[] reinterpret_cast<Wrapper<tClass>*>(aPointer);
+  }
+  
+  static size_t getFreeSpace() noexcept {
+    return sFibonacci->getFreeSpace();
+  }
+
+  static size_t getMaxUserBlockSize() noexcept {
+    return sFibonacci->getMaxUserBlockSize();
+  }
+
+  static size_t getMaxFreeUserBlockSize() noexcept {
+    return sFibonacci->getMaxFreeUserBlockSize();
+  }
+
+  static size_t getAlignment() noexcept {
+    return sFibonacci->getAlignment();
   }
   
   static bool isCorrectEmpty() noexcept {

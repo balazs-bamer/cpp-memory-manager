@@ -15,21 +15,23 @@ public:
     std::cout << "bad alloc\n";
   }
   static void lock() {
-    std::cout << " -=###=- lock\n";
+//    std::cout << " -=###=- lock\n";
   }
 
   static void unlock() {
-    std::cout << " -=###=- unlock\n\n";
+//    std::cout << " -=###=- unlock\n\n";
   }
 };
 
 char cSeparator[] = "\n----------------------------------------------------\n\n";
-constexpr size_t cMemorySize          =  1024u * 512u;
-constexpr size_t cMinBlockSize        =   128u;
-constexpr size_t cUserAlign           =     8u;
-constexpr size_t cFibonacciDifference =     3u;
-constexpr size_t cDiverseAllocCount   = 11111u;
-constexpr size_t cPoolSize            =   111u;
+constexpr size_t cMemorySize           = 1024u * 32768u;
+constexpr size_t cMinBlockSize         =     128u;
+constexpr size_t cUserAlign            =       8u;
+constexpr size_t cFibonacciDifference  =       3u;
+constexpr size_t cDiverseAllocCount    =   11111u;
+constexpr size_t cPoolSize             =     111u;
+constexpr size_t cBenchmarkAllocSize   =    1111u;
+constexpr size_t cBenchmarkAllocCount  =   10000u;
 
 typedef FibonacciMemoryManager<Interface, cMemorySize, cMinBlockSize, cUserAlign, cFibonacciDifference> Fibonacci;
 
@@ -170,21 +172,12 @@ public:
   }
 } gOccupier;
 
-int main() {
-  size_t technicalBlockSize;
-  size_t maxUserBlockSize;
-  size_t maxFibonacci;
-  uint8_t mem[cMemorySize];
-  {
-    Fibonacci* fibonacci = new(reinterpret_cast<void*>(mem)) Fibonacci(reinterpret_cast<void*>(mem), false);
-    technicalBlockSize = fibonacci->getTechnicalBlockSize();
-    maxUserBlockSize   = fibonacci->getMaxUserBlockSize();
-    maxFibonacci       = fibonacci->getMaxFibonacci();
-    std::cout << "maxFibonacci: " << maxFibonacci << "  technicalBlockSize: " << technicalBlockSize << "  maxUserBlockSize " << maxUserBlockSize << "  alignment: " << cUserAlign << '\n';
-    std::cout << cSeparator;
-  }
+void testNewDelete(bool const aExact) {
+  uint8_t* mem = new uint8_t[cMemorySize];
 
-  ExampleNewDelete::init(reinterpret_cast<void*>(mem), false);
+  std::cout << "Testing NewDelete with exact = " << aExact << '\n';
+
+  ExampleNewDelete::init(reinterpret_cast<void*>(mem), aExact);
   int* int1 = ExampleNewDelete::_new<int>();                     // allocate(4)
   Test* test1 = ExampleNewDelete::_new<Test>(2, 3.3);            // allocate(16)
   test1->print();
@@ -193,7 +186,6 @@ int main() {
   test2[1].print();
 
   size_t nodeSize = AllocatorBlockGauge<std::set<int>>::getNodeSize(0u);
-//  PoolAllocator<int, NewDeleteOccupier> allocator(cPoolSize, nodeSize, gOccupier);
   PoolAllocator<int, NewDeleteOccupier>* allocator = ExampleNewDelete::_new<PoolAllocator<int, NewDeleteOccupier>>(cPoolSize, nodeSize, gOccupier);         // allocate(72) -D_GLIBCXX_DEBUG
                                                                                                                                                             // allocate(4480)
   std::set<int, std::less<int>, PoolAllocator<int, NewDeleteOccupier>>* set1 = ExampleNewDelete::_new<std::set<int, std::less<int>, PoolAllocator<int, NewDeleteOccupier>>>(*allocator);     // allocate(144)
@@ -203,19 +195,103 @@ int main() {
   ExampleNewDelete::_delete<std::set<int, std::less<int>, PoolAllocator<int, NewDeleteOccupier>>>(set1);       // deallocate() *2
   ExampleNewDelete::_delete<PoolAllocator<int, NewDeleteOccupier>>(allocator);                                 // deallocate()
 
+  std::cout << " getFreeSpace() " << ExampleNewDelete::getFreeSpace() << 
+               " getMaxUserBlockSize() " << ExampleNewDelete::getMaxUserBlockSize() <<
+               " getMaxFreeUserBlockSize() " << ExampleNewDelete::getMaxFreeUserBlockSize() <<
+               " getAlignment() " << ExampleNewDelete::getAlignment() <<
+               "\n"; 
+
   ExampleNewDelete::_delete<int>(int1);                                                                        // deallocate()
   ExampleNewDelete::_delete<Test>(test1);                                                                      // deallocate()
   ExampleNewDelete::_deleteArray<Test>(test2);                                                                 // deallocate()
    
-  std::cout << "Checking if everything freed.\n"; 
+  std::cout << " getFreeSpace() " << ExampleNewDelete::getFreeSpace() << 
+               " getMaxUserBlockSize() " << ExampleNewDelete::getMaxUserBlockSize() <<
+               " getMaxFreeUserBlockSize() " << ExampleNewDelete::getMaxFreeUserBlockSize() <<
+               " getAlignment() " << ExampleNewDelete::getAlignment() <<
+               "\nChecking if everything freed.\n"; 
+
   if(!ExampleNewDelete::isCorrectEmpty()) {
     std::cout << "########## !!!!!!!!!!!!!!!!! corrupt after freeing everything !!!!!!!!!!!!!!!!!!\n";
   }
   else {  // nothing to do
   }
   std::cout << cSeparator;
+  delete[] mem;
+}
 
-  for(size_t i = 0u; i <= maxFibonacci; ++i) {
+void benchmarkNewDelete(bool const aExact) {
+  uint8_t* mem = new uint8_t[cMemorySize];
+
+  std::cout << "Testing NewDelete with exact = " << aExact << '\n';
+
+  ExampleNewDelete::init(reinterpret_cast<void*>(mem), aExact);
+   
+  std::cout << " getFreeSpace() " << ExampleNewDelete::getFreeSpace() << 
+               " getMaxUserBlockSize() " << ExampleNewDelete::getMaxUserBlockSize() <<
+               " getMaxFreeUserBlockSize() " << ExampleNewDelete::getMaxFreeUserBlockSize() <<
+               " getAlignment() " << ExampleNewDelete::getAlignment() <<
+               "\nChecking if everything freed.\n"; 
+
+  std::uintptr_t sum = 0;
+  std::array<uint8_t*, cBenchmarkAllocCount> array;
+  auto begin = std::chrono::high_resolution_clock::now();
+  for(size_t i = 0u; i < cBenchmarkAllocCount; ++i) {
+    uint8_t* allocated = new uint8_t[cBenchmarkAllocSize];
+    array[i] = allocated;
+    sum += reinterpret_cast<std::uintptr_t>(allocated);
+  }
+  for(size_t i = 0u; i < cBenchmarkAllocCount; ++i) {
+    delete[] array[i];
+  }
+  auto end = std::chrono::high_resolution_clock::now();
+  auto timeSpan = std::chrono::duration_cast<std::chrono::duration<double>>(end - begin);
+  std::cout << cBenchmarkAllocCount << " times allocating " << cBenchmarkAllocSize << " bytes using new took " << timeSpan.count() << '\n';
+
+  begin = std::chrono::high_resolution_clock::now();
+  for(size_t i = 0u; i < cBenchmarkAllocCount; ++i) {
+    uint8_t* allocated = ExampleNewDelete::_newArray<uint8_t>(cBenchmarkAllocSize);
+    array[i] = allocated;
+    sum += reinterpret_cast<std::uintptr_t>(allocated);
+  }
+  for(size_t i = 0u; i < cBenchmarkAllocCount; ++i) {
+    ExampleNewDelete::_deleteArray(array[i]);
+  }
+  end = std::chrono::high_resolution_clock::now();
+  timeSpan = std::chrono::duration_cast<std::chrono::duration<double>>(end - begin);
+  std::cout << cBenchmarkAllocCount << " times allocating " << cBenchmarkAllocSize << " bytes using NewDelete took " << timeSpan.count() << '\n';
+  std::cout << sum << '\n';
+
+  if(!ExampleNewDelete::isCorrectEmpty()) {
+    std::cout << "########## !!!!!!!!!!!!!!!!! corrupt after freeing everything !!!!!!!!!!!!!!!!!!\n";
+  }
+  else {  // nothing to do
+  }
+  std::cout << cSeparator;
+  delete[] mem;
+}
+
+int main() {
+  size_t technicalBlockSize;
+  size_t maxUserBlockSize;
+  size_t maxFibonacci;
+  {
+    uint8_t* mem = new uint8_t[cMemorySize];
+    Fibonacci* fibonacci = new(reinterpret_cast<void*>(mem)) Fibonacci(reinterpret_cast<void*>(mem), false);
+    technicalBlockSize = fibonacci->getTechnicalBlockSize();
+    maxUserBlockSize   = fibonacci->getMaxUserBlockSize();
+    maxFibonacci       = fibonacci->getMaxFibonacci();
+    std::cout << "maxFibonacci: " << maxFibonacci << "  technicalBlockSize: " << technicalBlockSize << "  maxUserBlockSize " << maxUserBlockSize << "  alignment: " << cUserAlign << '\n';
+    std::cout << cSeparator;
+    delete[] mem;
+  }
+
+  testNewDelete(false);
+  testNewDelete(true);
+  benchmarkNewDelete(false);
+  benchmarkNewDelete(true);
+
+  /*for(size_t i = 0u; i <= maxFibonacci; ++i) {
     size_t size = i * technicalBlockSize - cUserAlign;
     testUniform(size, true, true);
     testUniform(size, false, true);
@@ -224,6 +300,6 @@ int main() {
   }
   testDiverse(cDiverseAllocCount, true);
   std::cout << "##########################################################\n";
-  testDiverse(cDiverseAllocCount, false);
+  testDiverse(cDiverseAllocCount, false);*/
   return 0;
 }
