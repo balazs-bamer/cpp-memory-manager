@@ -46,10 +46,10 @@ int main() {
                " getMaxFreeUserBlockSize() " << MinMemMan::getMaxFreeUserBlockSize() <<
                "\n"; 
 
-  int* int1 = MinMemMan::_new<int>();                     // allocate(4)
-  Test* test1 = MinMemMan::_new<Test>(2, 3.3);            // allocate(16)
+  int* int1 = MinMemMan::_new<int>();
+  Test* test1 = MinMemMan::_new<Test>(2, 3.3);
   test1->print();
-  Test* test2 = MinMemMan::_newArray<Test>(2u);           // allocate(40)
+  Test* test2 = MinMemMan::_newArray<Test>(2u);
   test2[0].print();
   test2[1].print();
 
@@ -59,10 +59,6 @@ int main() {
                " getMaxUserBlockSize() " << MinMemMan::getMaxUserBlockSize() <<
                " getMaxFreeUserBlockSize() " << MinMemMan::getMaxFreeUserBlockSize() <<
                "\n"; 
-
-  MinMemMan::_delete<int>(int1);                                                                        // deallocate()
-  MinMemMan::_delete<Test>(test1);                                                                      // deallocate()
-  MinMemMan::_deleteArray<Test>(test2);                                                                 // deallocate()
    
   delete[] mem;
   return 0;

@@ -19,7 +19,7 @@ The memory manager was originally intended to supplement the FreeRTOS memory man
 
 ### Only-allocating memory manager
 
-This is intended for allocations on application startup which will never be de allocated.
+This is intended for allocations on application startup which will never be deallocated.
 
 ### General memory manager
 
@@ -347,10 +347,6 @@ int main() {
 
 //  int* intN = MinMemMan::_newArray<int>(cMemorySize);  signs bad alloc
   
-  MinMemMan::_delete<int>(int1);   
-  MinMemMan::_delete<Test>(test1);
-  MinMemMan::_deleteArray<Test>(test2);
-
   delete[] mem;
   return 0;
 }
