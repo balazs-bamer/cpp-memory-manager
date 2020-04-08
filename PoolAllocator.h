@@ -5,7 +5,6 @@
 #include <map>
 #include <list>
 #include <memory>
-#include <atomic>
 #include <forward_list>
 
 namespace nowtech::memory {
@@ -178,9 +177,6 @@ protected:
   void*  mMemory;
   void** mFirst;
   void** mProhibited;
-
-/*  TODO consider removing PoolAllocatorBase(Occupier &aOccupier) noexcept : mOccupier(aOccupier), mFirst(nullptr), mProhibited(nullptr) {
-  }*/
 
 public:
   PoolAllocatorBase(size_t const aPoolSize, size_t aNodeSize, tInterface& aOccupier) noexcept

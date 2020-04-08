@@ -1,8 +1,12 @@
-#include "FibonaccyMemoryManager.h"
+#include "PoolAllocator.h"
 #include <iostream>
 #include <algorithm>
+#include <forward_list>
+#include <list>
+#include <map>
+#include <set>
 
-using namespace nowtech;
+using namespace nowtech::memory;
 
 constexpr size_t cLen      =   55555u;
 constexpr size_t cBufLen   = 16777216;

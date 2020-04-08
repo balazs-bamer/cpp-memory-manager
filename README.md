@@ -5,6 +5,8 @@ Crossplatform memory manager providing temporary and long-term pool allocators a
 
 The memory manager was originally intended to supplement the FreeRTOS memory manager for MCUs with medium to large amount of SRAM. Larger MCUs like STM32H7 series come with non-continuous SRAM blocks, of which only one is accessible to the FreeRTOS and the C++ runtime library.
 
+* C++ 14 standard
+* A minimal thread-safe memory manager for allocation but no deallocation.
 * The general memory manager provides access to these isolated regions. A custom class with static methods for basic `new` and `delete` functionality.
 * The long-term pool allocator provides efficient pools for STL containers to avoid the default allocator using `new` and `delete` here. These pools
   * use space-efficient storage for internal nodes of one or more containers with node size tailored for the contents.
@@ -14,6 +16,10 @@ The memory manager was originally intended to supplement the FreeRTOS memory man
   * zero-cost deallocate
 
 ## Use cases
+
+### Only-allocating memory manager
+
+This is intended for allocations on application startup which will never be de allocated.
 
 ### General memory manager
 
@@ -31,11 +37,23 @@ Generally, the general memory manager is intended for not too frequent allocatio
 
 This may be allocated on the heap or using the general memory manager on and independent memory region. Its only purpose is to be embedded in STL containers (see below) to achieve blazing-fast node allocation and deallocation. It uses fixed block size given in its constructor. It only requires updating 2 pointers on each operation.
 
-### Temporary pool allocator
+### Temporary allocator
 
 This is similar to the above one, but even faster: deallocation costs nothing. Moreover, it can serve blocks of arbitrary size without any fragmentation. It is implemented as a ringbuffer, so if it once gets full, the oldest contents are corrupted, hence only suitable as a workspace for short-term computations.
 
 ## Design
+
+### Only-allocating memory manager
+
+This is rather simple. It only allocates in its buffer as long as there is space left in it, after it it signs error via the template parameter _interface_’s `badAlloc()` call. This may throw an exception or do something else, according to the applicaiton policy.
+
+This implementation is thread-safe. This memory manager gets this information:
+
+Type          | Name             | Where                    | Description
+--------------|------------------|--------------------------|--------------------
+class         |_interface_       |template                  |A user-defined interface to sign allocation errors.
+`void*`       |_memory_          |template or constructor   |The start address of the block to use for internal accounting and as memory to serve. This must be aligned to `std::max_align_t`. 
+`size_t`      |_memorySize_      |template or constructor   |Length of the available memory in bytes. Must be a multiple of `std::max_align_t`
 
 ### General memory manager
 
@@ -55,7 +73,7 @@ When _D_ = 3, it looks like
 ---------- these 4 are not splittable
 ```
 
-Later on, I mean generalized Fibonacci numbers on the term Fibonacci. The memory manager gets these information:
+Later on, I mean generalized Fibonacci numbers on the term Fibonacci. The memory manager gets this information:
 
 Type           | Name             | Where         | Description
 ---------------|------------------|---------------|------------------------
@@ -283,11 +301,60 @@ Error handling
 
 The Occupier may throw any exception, if the application decides to use exceptions, or use any other way to handle errors, if the application is compiled without exception handling.
 
-### Temporary pool allocator
+### Temporary allocator
 
-TBD
+Quite similar to the long-term pool allocator, but uses a ringbuffer and the deallocator does nothing. It signs error in a similar way to the other allocator only if the application tries to allocate a block larger than half the ringbuffer size.
+
+The idea is taken from chapter 10.5 in Christopher Kormanyos’s Real-Time C++ Efficient Object-Oriented and Template Microcontroller Programming (Second Edition).
 
 ## Usage
+
+### Only-allocating memory manager
+
+```C++
+class Test final {
+  int    mI = 1u;
+  double mD = 2.2;
+
+public:
+  Test() = default;
+  Test(int aI, double aD) : mI(aI), mD(aD) {}
+  ~Test() = default;
+  void print();
+};
+
+class Interface final {
+public:
+  static void badAlloc() {
+    std::cout << "bad alloc\n";
+  }
+};
+
+constexpr size_t cMemorySize           = 1024u;
+typedef OnlyAllocate<Interface> MinMemMan;
+
+int main() {
+  uint8_t* mem = new uint8_t[cMemorySize];
+
+  MinMemMan::init(reinterpret_cast<void*>(mem), cMemorySize);
+  
+  int* int1 = MinMemMan::_new<int>();
+  Test* test1 = MinMemMan::_new<Test>(2, 3.3);
+  test1->print();
+  Test* test2 = MinMemMan::_newArray<Test>(2u);
+  test2[0].print();
+  test2[1].print();
+
+//  int* intN = MinMemMan::_newArray<int>(cMemorySize);  signs bad alloc
+  
+  MinMemMan::_delete<int>(int1);   
+  MinMemMan::_delete<Test>(test1);
+  MinMemMan::_deleteArray<Test>(test2);
+
+  delete[] mem;
+  return 0;
+}
+```
 
 ### General memory manager
 
@@ -465,8 +532,51 @@ std::forward_list<uint32_t, PoolAllocator<uint32_t, FixedOccupier>> list1(alloc)
 size_t nodeSize = AllocatorBlockGauge<std::map<uint32_t, uint32_t>>::getNodeSize(std::pair<uint32_t, uint32_t>{0u, 0u});
 PoolAllocator<std::pair<uint32_t, uint32_t>, FixedOccupier> alloc2(cPoolSize, nodeSize, gOccupier);
 std::map<uint32_t, uint32_t, std::less<uint32_t>, PoolAllocator<std::pair<uint32_t, uint32_t>, FixedOccupier>> tree1(alloc);
+```
 
-### Temporary pool allocator
+### Temporary allocator
 
-TBD
+#### std::deque
+
+```C++
+constexpr size_t cCount          =   55555u;
+constexpr size_t cRingbufferSize = 16777216;
+
+class FixedOccupier final {
+private:
+  uint8_t *mMemory;
+
+public:
+  FixedOccupier(size_t const aLen) noexcept : mMemory(new uint8_t[aLen]) {
+  }
+
+  ~FixedOccupier() {
+    delete[] mMemory;
+  }
+
+  void* occupy(size_t const aSize) noexcept {
+std::cout << "o: " << aSize << ' ' << static_cast<void*>(mMemory) << ' ' << static_cast<void*>(this) <<'\n';
+    return mMemory;
+  }
+
+  void release(void* const aPointer) noexcept {
+    // nothing to do
+  }
+
+  void badAlloc() {
+    throw false;
+  }
+} gOccupier(cRingbufferSize);
+
+void testDeque() {
+  TemporaryAllocator<uint32_t, FixedOccupier> alloc(cRingbufferSize, gOccupier);
+  std::deque<uint32_t, TemporaryAllocator<uint32_t, FixedOccupier>> deq(alloc);
+ 
+  for(uint32_t i = 0; i < cCount; ++i) {
+    deq.push_front(i);
+  }
+  for(uint32_t i = 0; i < cCount; ++i) {
+    deq.pop_front();
+  }
+}
 ```
