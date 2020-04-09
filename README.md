@@ -75,15 +75,15 @@ When _D_ = 3, it looks like
 
 Later on, I mean generalized Fibonacci numbers on the term Fibonacci. The memory manager gets this information:
 
-Type           | Name             | Where         | Description
----------------|------------------|---------------|------------------------
-`void*`        |_memory_          |constructor    |The start address of the block to use for internal accounting and as memory to serve. This must be aligned to `std::max_align_t`. The memory used by `FibonacciMemoryManager` internal fields can be placed here using placement new.
-`bool`         |_exactAllocation_ |constructor    |If true, the system strives to avoid internal fragmentation. If false, the system tries to save bigger blocks for possibly bigger allocations later.
-class          |_interface_       |template       |A user-defined interface to sign allocation errors.
-`size_t`       |_memorySize_      |template       |Length of the available memory in bytes. 16384 <= _memorySize_
-`size_t`       |_minimalBlockSize_|template       |Minimum length of an internal block will be a multiple of this and a possible Fibonacci number configured for the system. However, due to internal accounting, only an amount reduced by _alignment_ will be available for user data. Must be a multiple of _alignment_ and at least 2 * _alignment_. The system will choose the real value such that the memory to be served will be maximized.
-`size_t`       |_alignment_       |template       |The alignment of user data to serve, at least 4 bytes.
-`size_t`       |_D_               |template       |See above. 1 <= _D_ < 9
+Type           | Name             | Where                  | Description
+---------------|------------------|------------------------|------------------------
+`void*`        |_memory_          |template or constructor |The start address of the block to use for internal accounting and as memory to serve. This must be aligned to `std::max_align_t`. The memory used by `FibonacciMemoryManager` internal fields can be placed here using placement new.
+`bool`         |_exactAllocation_ |constructor             |If true, the system strives to avoid internal fragmentation. If false, the system tries to save bigger blocks for possibly bigger allocations later.
+class          |_interface_       |template                |A user-defined interface to sign allocation errors.
+`size_t`       |_memorySize_      |template                |Length of the available memory in bytes. 16384 <= _memorySize_
+`size_t`       |_minimalBlockSize_|template                |Minimum length of an internal block will be a multiple of this and a possible Fibonacci number configured for the system. However, due to internal accounting, only an amount reduced by _alignment_ will be available for user data. Must be a multiple of _alignment_ and at least 2 * _alignment_. The system will choose the real value such that the memory to be served will be maximized.
+`size_t`       |_alignment_       |template                |The alignment of user data to serve, at least 4 bytes.
+`size_t`       |_D_               |template                |See above. 1 <= _D_ < 9
 
 Static assertions will check the above conditions, and part of the internal configuration will be performed compile-time. The interface looks like:
 

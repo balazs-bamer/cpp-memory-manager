@@ -35,7 +35,7 @@ void* alignToMax(void* const aPointer) {
 ///   static void lock();
 ///   static void unlock();
 /// };
-template <typename tInterface, size_t tMemorySize, size_t tMinimalBlockSize, size_t tAlignment, size_t tFibonacciIndexDifference>
+template <typename tInterface, size_t tMemorySize, size_t tMinimalBlockSize, size_t tAlignment, size_t tFibonacciIndexDifference, uintptr_t tMemory = 0u>
 class FibonacciMemoryManager final {
   static_assert(tMemorySize >= 16384);
   static_assert(tMemorySize % alignof(std::max_align_t) == 0u);
@@ -154,6 +154,9 @@ private:
 
 public:
   FibonacciMemoryManager(void* aMemory, bool const aExactAllocation);
+  
+  FibonacciMemoryManager(bool const aExactAllocation) : FibonacciMemoryManager(reinterpret_cast<void*>(tMemory), aExactAllocation) {
+  }
 
   size_t getFibonacciCount() const noexcept {
     return mFibonacciCount;
@@ -210,7 +213,7 @@ private:
   }
 };
 
-template <typename tInterface, size_t tMemorySize, size_t tMinimalBlockSize, size_t tAlignment, size_t tFibonacciIndexDifference>
+template <typename tInterface, size_t tMemorySize, size_t tMinimalBlockSize, size_t tAlignment, size_t tFibonacciIndexDifference, uintptr_t tMemory = 0u>
 class NewDelete final {
 private: 
   static FibonacciMemoryManager<tInterface, tMemorySize, tMinimalBlockSize, tAlignment, tFibonacciIndexDifference>* sFibonacci; // could be inline for c++17
@@ -241,8 +244,12 @@ private:
   };
 
 public:
+  static void init(bool const aExactAllocation) { 
+    sFibonacci = new(tMemory) FibonacciMemoryManager<tInterface, tMemorySize, tMinimalBlockSize, tAlignment, tFibonacciIndexDifference, tMemory>(aExactAllocation);
+  }
+
   static void init(void* aMemory, bool const aExactAllocation) { 
-    sFibonacci = new(aMemory) FibonacciMemoryManager<tInterface, tMemorySize, tMinimalBlockSize, tAlignment, tFibonacciIndexDifference>(aMemory, aExactAllocation);
+    sFibonacci = new(aMemory) FibonacciMemoryManager<tInterface, tMemorySize, tMinimalBlockSize, tAlignment, tFibonacciIndexDifference, tMemory>(aMemory, aExactAllocation);
   }
 
   template<typename tClass, typename ...tParameters>
@@ -288,12 +295,12 @@ public:
   }
 };
 
-template <typename tInterface, size_t tMemorySize, size_t tMinimalBlockSize, size_t tAlignment, size_t tFibonacciIndexDifference>
-FibonacciMemoryManager<tInterface, tMemorySize, tMinimalBlockSize, tAlignment, tFibonacciIndexDifference>* NewDelete<tInterface, tMemorySize, tMinimalBlockSize, tAlignment, tFibonacciIndexDifference>::sFibonacci;
+template <typename tInterface, size_t tMemorySize, size_t tMinimalBlockSize, size_t tAlignment, size_t tFibonacciIndexDifference, uintptr_t tMemory>
+FibonacciMemoryManager<tInterface, tMemorySize, tMinimalBlockSize, tAlignment, tFibonacciIndexDifference>* NewDelete<tInterface, tMemorySize, tMinimalBlockSize, tAlignment, tFibonacciIndexDifference, tMemory>::sFibonacci;
 
 /// This class may be instantiated on the beginning of aMemory using placement new.
-template <typename tInterface, size_t tMemorySize, size_t tMinimalBlockSize, size_t tAlignment, size_t tFibonacciIndexDifference>
-FibonacciMemoryManager<tInterface, tMemorySize, tMinimalBlockSize, tAlignment, tFibonacciIndexDifference>::FibonacciMemoryManager(void* aMemory, bool const aExactAllocation) 
+template <typename tInterface, size_t tMemorySize, size_t tMinimalBlockSize, size_t tAlignment, size_t tFibonacciIndexDifference, uintptr_t tMemory>
+FibonacciMemoryManager<tInterface, tMemorySize, tMinimalBlockSize, tAlignment, tFibonacciIndexDifference, tMemory>::FibonacciMemoryManager(void* aMemory, bool const aExactAllocation) 
   : mExactAllocation(aExactAllocation) {
   bool failed = false;
   mBlockSize = tMinimalBlockSize;
@@ -338,8 +345,8 @@ FibonacciMemoryManager<tInterface, tMemorySize, tMinimalBlockSize, tAlignment, t
   }
 }
 
-template <typename tInterface, size_t tMemorySize, size_t tMinimalBlockSize, size_t tAlignment, size_t tFibonacciIndexDifference>
-size_t FibonacciMemoryManager<tInterface, tMemorySize, tMinimalBlockSize, tAlignment, tFibonacciIndexDifference>::getLargestFreeIndex() const noexcept {
+template <typename tInterface, size_t tMemorySize, size_t tMinimalBlockSize, size_t tAlignment, size_t tFibonacciIndexDifference, uintptr_t tMemory>
+size_t FibonacciMemoryManager<tInterface, tMemorySize, tMinimalBlockSize, tAlignment, tFibonacciIndexDifference, tMemory>::getLargestFreeIndex() const noexcept {
   size_t fibonacciIndex;
   for(fibonacciIndex = mFibonacciCount - 1u; fibonacciIndex < mFibonacciCount; --fibonacciIndex) {
     if(mFreeSets[fibonacciIndex].size() > 0u) {
@@ -351,8 +358,8 @@ size_t FibonacciMemoryManager<tInterface, tMemorySize, tMinimalBlockSize, tAlign
   return std::min<size_t>(fibonacciIndex, mFibonacciCount);
 }
 
-template <typename tInterface, size_t tMemorySize, size_t tMinimalBlockSize, size_t tAlignment, size_t tFibonacciIndexDifference>
-void* FibonacciMemoryManager<tInterface, tMemorySize, tMinimalBlockSize, tAlignment, tFibonacciIndexDifference>::allocate(size_t const aSize) {
+template <typename tInterface, size_t tMemorySize, size_t tMinimalBlockSize, size_t tAlignment, size_t tFibonacciIndexDifference, uintptr_t tMemory>
+void* FibonacciMemoryManager<tInterface, tMemorySize, tMinimalBlockSize, tAlignment, tFibonacciIndexDifference, tMemory>::allocate(size_t const aSize) {
   tInterface::lock();
   size_t smallestSuitableIndex = mFibonacciCount;
   size_t fibonacciIndex = mFibonacciCount;
@@ -435,8 +442,8 @@ void* FibonacciMemoryManager<tInterface, tMemorySize, tMinimalBlockSize, tAlignm
   return pointer;
 }
 
-template <typename tInterface, size_t tMemorySize, size_t tMinimalBlockSize, size_t tAlignment, size_t tFibonacciIndexDifference>
-void FibonacciMemoryManager<tInterface, tMemorySize, tMinimalBlockSize, tAlignment, tFibonacciIndexDifference>::deallocate(void* const aPointer) {
+template <typename tInterface, size_t tMemorySize, size_t tMinimalBlockSize, size_t tAlignment, size_t tFibonacciIndexDifference, uintptr_t tMemory>
+void FibonacciMemoryManager<tInterface, tMemorySize, tMinimalBlockSize, tAlignment, tFibonacciIndexDifference, tMemory>::deallocate(void* const aPointer) {
   tInterface::lock();
   if(aPointer != nullptr) {
     uint8_t* blockStart = reinterpret_cast<uint8_t*>(aPointer) - tAlignment;
@@ -498,8 +505,8 @@ void FibonacciMemoryManager<tInterface, tMemorySize, tMinimalBlockSize, tAlignme
   tInterface::unlock();
 }
 
-template <typename tInterface, size_t tMemorySize, size_t tMinimalBlockSize, size_t tAlignment, size_t tFibonacciIndexDifference>
-bool FibonacciMemoryManager<tInterface, tMemorySize, tMinimalBlockSize, tAlignment, tFibonacciIndexDifference>::isCorrectEmpty() const noexcept {
+template <typename tInterface, size_t tMemorySize, size_t tMinimalBlockSize, size_t tAlignment, size_t tFibonacciIndexDifference, uintptr_t tMemory>
+bool FibonacciMemoryManager<tInterface, tMemorySize, tMinimalBlockSize, tAlignment, tFibonacciIndexDifference, tMemory>::isCorrectEmpty() const noexcept {
   tInterface::lock();
   auto found = std::find_if(mFreeSets, mFreeSets + mFibonacciCount, [](auto &set){
     return set.size() > 0u;
@@ -509,8 +516,8 @@ bool FibonacciMemoryManager<tInterface, tMemorySize, tMinimalBlockSize, tAlignme
   return result;
 }
 
-template <typename tInterface, size_t tMemorySize, size_t tMinimalBlockSize, size_t tAlignment, size_t tFibonacciIndexDifference>
-size_t FibonacciMemoryManager<tInterface, tMemorySize, tMinimalBlockSize, tAlignment, tFibonacciIndexDifference>::calculateFibonaccis(size_t* const aResult, size_t const aMaxCount, size_t const aMaxValue) noexcept {
+template <typename tInterface, size_t tMemorySize, size_t tMinimalBlockSize, size_t tAlignment, size_t tFibonacciIndexDifference, uintptr_t tMemory>
+size_t FibonacciMemoryManager<tInterface, tMemorySize, tMinimalBlockSize, tAlignment, tFibonacciIndexDifference, tMemory>::calculateFibonaccis(size_t* const aResult, size_t const aMaxCount, size_t const aMaxValue) noexcept {
   intptr_t index = tFibonacciIndexDifference + 1u;
   std::iota(aResult, aResult + index, 1u);
   size_t next = 0u;
@@ -522,8 +529,8 @@ size_t FibonacciMemoryManager<tInterface, tMemorySize, tMinimalBlockSize, tAlign
   return static_cast<size_t>(index);
 }
 
-template <typename tInterface, size_t tMemorySize, size_t tMinimalBlockSize, size_t tAlignment, size_t tFibonacciIndexDifference>
-size_t FibonacciMemoryManager<tInterface, tMemorySize, tMinimalBlockSize, tAlignment, tFibonacciIndexDifference>::calculateTotalHeaderSize(size_t const * const aFibonaccis, size_t const aFibonacciCount) noexcept {
+template <typename tInterface, size_t tMemorySize, size_t tMinimalBlockSize, size_t tAlignment, size_t tFibonacciIndexDifference, uintptr_t tMemory>
+size_t FibonacciMemoryManager<tInterface, tMemorySize, tMinimalBlockSize, tAlignment, tFibonacciIndexDifference, tMemory>::calculateTotalHeaderSize(size_t const * const aFibonaccis, size_t const aFibonacciCount) noexcept {
   return sizeof(*this)
   + alignof(FreeSet)          + aFibonacciCount * sizeof(FreeSet)
   + alignof(size_t)           + aFibonacciCount * sizeof(size_t)
@@ -532,8 +539,8 @@ size_t FibonacciMemoryManager<tInterface, tMemorySize, tMinimalBlockSize, tAlign
   + tAlignment;
 }
 
-template <typename tInterface, size_t tMemorySize, size_t tMinimalBlockSize, size_t tAlignment, size_t tFibonacciIndexDifference>
-void FibonacciMemoryManager<tInterface, tMemorySize, tMinimalBlockSize, tAlignment, tFibonacciIndexDifference>::initInternalData(void* aMemory) noexcept {
+template <typename tInterface, size_t tMemorySize, size_t tMinimalBlockSize, size_t tAlignment, size_t tFibonacciIndexDifference, uintptr_t tMemory>
+void FibonacciMemoryManager<tInterface, tMemorySize, tMinimalBlockSize, tAlignment, tFibonacciIndexDifference, tMemory>::initInternalData(void* aMemory) noexcept {
   uint8_t* allocatorLocation = static_cast<uint8_t*>(alignTo(reinterpret_cast<uint8_t*>(aMemory) + sizeof(*this), alignof(FreeSetAllocator)));
   mFreeSets = static_cast<FreeSet*>(alignTo(reinterpret_cast<uint8_t*>(allocatorLocation) + sizeof(FreeSetAllocator), alignof(FreeSet)));
   mFibonaccis = static_cast<size_t*>(alignTo(reinterpret_cast<uint8_t*>(mFreeSets) + mFibonacciCount * sizeof(FreeSet), alignof(size_t)));
@@ -555,8 +562,8 @@ void FibonacciMemoryManager<tInterface, tMemorySize, tMinimalBlockSize, tAlignme
   mReady = true;
 }
 
-template <typename tInterface, size_t tMemorySize, size_t tMinimalBlockSize, size_t tAlignment, size_t tFibonacciIndexDifference>
-void FibonacciMemoryManager<tInterface, tMemorySize, tMinimalBlockSize, tAlignment, tFibonacciIndexDifference>::fillAllocationDirections() noexcept {
+template <typename tInterface, size_t tMemorySize, size_t tMinimalBlockSize, size_t tAlignment, size_t tFibonacciIndexDifference, uintptr_t tMemory>
+void FibonacciMemoryManager<tInterface, tMemorySize, tMinimalBlockSize, tAlignment, tFibonacciIndexDifference, tMemory>::fillAllocationDirections() noexcept {
   for(size_t i = 0u; i < mFibonacciCount; ++i) {
     allocationDirectionAt(i, i).set(true);
   }
