@@ -60,6 +60,7 @@ public:
     }
     else {
       tInterface::badAlloc();
+      sGetPointer = nullptr;
     }
   }
 
@@ -102,6 +103,7 @@ protected:
     uint8_t* pointer = sGetPointer.fetch_add(aSize);
     if(pointer + aSize > sEnd) {
       tInterface::badAlloc();
+      pointer = nullptr;
     }
     else { // nothing to do
     }

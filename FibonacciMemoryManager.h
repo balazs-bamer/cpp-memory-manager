@@ -20,16 +20,6 @@ constexpr size_t countSetBits(size_t aNumber) noexcept {
   return count; 
 }
 
-void* alignTo(void* const aPointer, size_t const aAlign) {
-  void* pointer = aPointer;
-  size_t bufLen = aAlign * 2u;
-  return std::align(aAlign, 1u, pointer, bufLen);
-}
-
-void* alignToMax(void* const aPointer) {
-  return alignTo(aPointer, alignof(std::max_align_t));
-}
-
 /// class Interface {
 ///   static void badAlloc();
 ///   static void lock();
@@ -199,6 +189,16 @@ public:
   bool isCorrectEmpty() const noexcept;
 
 private:
+  void* alignTo(void* const aPointer, size_t const aAlign) {
+    void* pointer = aPointer;
+    size_t bufLen = aAlign * 2u;
+    return std::align(aAlign, 1u, pointer, bufLen);
+  }
+
+  void* alignToMax(void* const aPointer) {
+    return alignTo(aPointer, alignof(std::max_align_t));
+  }
+
   static size_t calculateFibonaccis(size_t* const aResult, size_t const aMaxCount, size_t const aMaxValue) noexcept;
   size_t calculateTotalHeaderSize(size_t const * const aFibonaccis, size_t const aFibonacciCount) noexcept;
   void initInternalData(void* aMemory) noexcept;
@@ -547,7 +547,7 @@ void FibonacciMemoryManager<tInterface, tMemorySize, tMinimalBlockSize, tAlignme
   calculateFibonaccis(mFibonaccis, mFibonacciCount, tMemorySize);
   mAllocationDirections = new(alignTo(mFibonaccis + mFibonacciCount, alignof(FibonacciCell))) FibonacciCell[mFibonacciCount * mFibonacciCount];
   fillAllocationDirections();
-  mPool = alignTo(mAllocationDirections + mFibonacciCount * mFibonacciCount, alignof(std::max_align_t));
+  mPool = alignToMax(mAllocationDirections + mFibonacciCount * mFibonacciCount);
   FixedOccupier occupier(mPool);
   size_t poolSize = mFibonaccis[mFibonacciCount - 2u - tFibonacciIndexDifference];
   mAllocator = new(allocatorLocation) FreeSetAllocator(poolSize, mSetNodeSize, occupier);
