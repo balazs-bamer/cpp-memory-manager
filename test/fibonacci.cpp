@@ -1,4 +1,4 @@
-#include "FibonaccyMemoryManager.h"
+#include "FibonacciMemoryManager.h"
 #include <iomanip>
 #include <iostream>
 #include <algorithm>
@@ -144,6 +144,14 @@ public:
     std::cout << " Test(int aI)\n";
   }
 
+  Test(Test const &aOther) : mI(aOther.mI), mD(aOther.mD) {
+    std::cout << " Test(Test const &aOther)\n";
+  }
+
+  Test(Test &&aOther) : mI(aOther.mI), mD(aOther.mD) {
+    std::cout << " Test(Test &&aOther)\n";
+  }
+
   ~Test() {
     std::cout << "~Test()\n";
   }
@@ -186,14 +194,28 @@ void testNewDelete(bool const aExact) {
   test2[1].print();
 
   size_t nodeSize = AllocatorBlockGauge<std::set<int>>::getNodeSize(0u);
-  PoolAllocator<int, NewDeleteOccupier>* allocator = ExampleNewDelete::_new<PoolAllocator<int, NewDeleteOccupier>>(cPoolSize, nodeSize, gOccupier);         // allocate(72) -D_GLIBCXX_DEBUG
+  PoolAllocator<int, NewDeleteOccupier>* allocator1 = ExampleNewDelete::_new<PoolAllocator<int, NewDeleteOccupier>>(cPoolSize, nodeSize, gOccupier);         // allocate(72) -D_GLIBCXX_DEBUG
                                                                                                                                                             // allocate(4480)
-  std::set<int, std::less<int>, PoolAllocator<int, NewDeleteOccupier>>* set1 = ExampleNewDelete::_new<std::set<int, std::less<int>, PoolAllocator<int, NewDeleteOccupier>>>(*allocator);     // allocate(144)
+  std::set<int, std::less<int>, PoolAllocator<int, NewDeleteOccupier>>* set1 = ExampleNewDelete::_new<std::set<int, std::less<int>, PoolAllocator<int, NewDeleteOccupier>>>(*allocator1);     // allocate(144)
   set1->insert(1);
   set1->insert(2);
   std::cout << "set1->size() " << set1->size() << '\n';
   ExampleNewDelete::_delete<std::set<int, std::less<int>, PoolAllocator<int, NewDeleteOccupier>>>(set1);       // deallocate() *2
-  ExampleNewDelete::_delete<PoolAllocator<int, NewDeleteOccupier>>(allocator);                                 // deallocate()
+  ExampleNewDelete::_delete<PoolAllocator<int, NewDeleteOccupier>>(allocator1);                                 // deallocate()
+
+  std::cout << "gauge comes\n";
+  nodeSize = AllocatorBlockGauge<std::list<Test>>::getNodeSize(*test1);
+  std::cout << "new alloc comes\n";
+  PoolAllocator<Test, NewDeleteOccupier>* allocator2 = ExampleNewDelete::_new<PoolAllocator<Test, NewDeleteOccupier>>(cPoolSize, nodeSize, gOccupier);         // allocate(72) -D_GLIBCXX_DEBUG
+                                                                                                                                                            // allocate(4480)
+  std::cout << "new list comes\n";
+  std::list<Test, PoolAllocator<Test, NewDeleteOccupier>>* list1 = ExampleNewDelete::_new<std::list<Test, PoolAllocator<Test, NewDeleteOccupier>>>(*allocator1);     // allocate(144)
+  std::cout << "list usage comes\n";
+  list1->push_back(Test());
+  list1->emplace_back(Test(3, 4.4));
+  std::cout << "list1->size() " << list1->size() << '\n';
+  ExampleNewDelete::_delete<std::list<Test, PoolAllocator<Test, NewDeleteOccupier>>>(list1);       // deallocate() *2
+  ExampleNewDelete::_delete<PoolAllocator<Test, NewDeleteOccupier>>(allocator2);                                 // deallocate()
 
   std::cout << " getFreeSpace() " << ExampleNewDelete::getFreeSpace() << 
                " getMaxUserBlockSize() " << ExampleNewDelete::getMaxUserBlockSize() <<

@@ -53,7 +53,7 @@ int main() {
   test2[0].print();
   test2[1].print();
 
-  int* intN = MinMemMan::_newArray<int>(cMemorySize);  // signs bad alloc
+  // int* intN = MinMemMan::_newArray<int>(cMemorySize);  // signs bad alloc
 
   std::cout << " getFreeSpace() " << MinMemMan::getFreeSpace() << 
                " getMaxUserBlockSize() " << MinMemMan::getMaxUserBlockSize() <<

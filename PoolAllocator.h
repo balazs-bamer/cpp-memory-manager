@@ -133,6 +133,38 @@ public:
   }
 };
 
+template<typename tKey, typename tValue>
+class AllocatorBlockGauge<std::multimap<tKey, tValue>> : public AllocatorBlockGaugeBase {
+public:
+  static size_t getNodeSize(void* aMemory, std::pair<tKey, tValue> const &aValue) noexcept {
+    MeasureAllocator<std::pair<tKey, tValue>> gauge(aMemory);
+    std::multimap<tKey, tValue, std::less<tKey>, MeasureAllocator<std::pair<tKey, tValue>>> container(gauge);
+    container.insert(aValue);
+    return gauge.getNodeSize();
+  }
+
+  static size_t getNodeSize(std::pair<tKey, tValue> const &aValue) noexcept {
+    uint8_t buffer[cMeasureBufferSize];
+    return getNodeSize(buffer, aValue);
+  }
+};
+
+template<typename tContainerItem>
+class AllocatorBlockGauge<std::multiset<tContainerItem>> : public AllocatorBlockGaugeBase {
+public:
+  static size_t getNodeSize(void* aMemory, tContainerItem const &aValue) noexcept {
+    MeasureAllocator<tContainerItem> gauge(aMemory);
+    std::multiset<tContainerItem, std::less<tContainerItem>, MeasureAllocator<tContainerItem>> container(gauge);
+    container.insert(aValue);
+    return gauge.getNodeSize();
+  }
+
+  static size_t getNodeSize(tContainerItem const &aValue) noexcept {
+    uint8_t buffer[cMeasureBufferSize];
+    return getNodeSize(buffer, aValue);
+  }
+};
+
 template<typename tContainerItem>
 class AllocatorBlockGauge<std::set<tContainerItem>> : public AllocatorBlockGaugeBase {
 public:

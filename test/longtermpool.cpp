@@ -8,7 +8,7 @@
 
 using namespace nowtech::memory;
 
-constexpr size_t cLen      =   55555u;
+constexpr size_t cLen      =    55555u;
 constexpr size_t cBufLen   = 16777216;
 
 class FixedOccupier final {
@@ -24,7 +24,7 @@ public:
   }
 
   void* occupy(size_t const aSize) noexcept {
-std::cout << "o: " << aSize << ' ' << static_cast<void*>(mMemory) << ' ' << static_cast<void*>(this) <<'\n';
+std::cout << "occupy: " << aSize << ' ' << static_cast<void*>(mMemory) << ' ' << static_cast<void*>(this) <<'\n';
     return mMemory;
   }
 
@@ -41,7 +41,7 @@ template<typename tCont>
 void print(char const * const aPrefix, tCont const &aCont) {
   std::cout << aPrefix;
   std::for_each(aCont.begin(), aCont.end(), [](auto i){ 
-//    std::cout << i << ' ';
+  //  std::cout << i << ' ';
   });
   std::cout << '\n';
 }
@@ -50,7 +50,16 @@ template<typename tKey, typename tValue, typename tComp, typename tAlloc>
 void print(char const * const aPrefix, std::map<tKey, tValue, tComp, tAlloc> const &aCont) {
   std::cout << aPrefix;
   std::for_each(aCont.begin(), aCont.end(), [](auto i){ 
-//    std::cout << i.first << ' ' << i.second << ' ';
+//    std::cout << '(' << i.first << ',' << i.second << ") ";
+  });
+  std::cout << '\n';
+}
+
+template<typename tKey, typename tValue, typename tComp, typename tAlloc>
+void print(char const * const aPrefix, std::multimap<tKey, tValue, tComp, tAlloc> const &aCont) {
+  std::cout << aPrefix;
+  std::for_each(aCont.begin(), aCont.end(), [](auto i){ 
+  //  std::cout << '(' << i.first << ',' << i.second << ") ";
   });
   std::cout << '\n';
 }
@@ -179,6 +188,100 @@ void testMap() {
   //}
 }
 
+void testMultiSet() {
+  std::cout << "testMultiSet\n";
+  size_t nodeSize = AllocatorBlockGauge<std::multiset<uint32_t>>::getNodeSize(0u); 
+  PoolAllocator<uint32_t, FixedOccupier> alloc1(cLen * 2u, nodeSize, gOccupier1);
+  PoolAllocator<uint32_t, FixedOccupier> alloc2(cLen * 2u, nodeSize, gOccupier2);
+  std::multiset<uint32_t, std::less<uint32_t>, PoolAllocator<uint32_t, FixedOccupier>> tree1(alloc1);
+  std::multiset<uint32_t, std::less<uint32_t>, PoolAllocator<uint32_t, FixedOccupier>> tree2(alloc2);
+
+  for(uint32_t i = 0; i < cLen; ++i) {
+    tree1.insert(i);
+    tree1.insert(i);
+    tree2.insert(i);
+    tree2.insert(i);
+  }
+  print("multiset: ", tree1);
+  print("multiset: ", tree2);
+
+  for(uint32_t i = 0; i < cLen; ++i) {
+    tree1.erase(i);
+    tree1.erase(i);
+    tree2.erase(i);
+    tree2.erase(i);
+  }
+  print("multiset: ", tree1);
+  print("multiset: ", tree2);
+
+  for(uint32_t i = 0; i < cLen; ++i) {
+    tree1.insert(i);
+    tree1.insert(i);
+    tree2.insert(i);
+    tree2.insert(i);
+  }
+  print("multiset: ", tree1);
+  print("multiset: ", tree2);
+
+  for(uint32_t i = cLen - 1u; i < cLen; --i) {
+    tree1.erase(i);
+    tree1.erase(i);
+    tree2.erase(i);
+    tree2.erase(i);
+  }
+  print("multiset: ", tree1);
+  print("multiset: ", tree2);
+}
+
+void testMultiMap() {
+  std::cout << "testMultiMap\n";
+  size_t nodeSize = AllocatorBlockGauge<std::multimap<uint32_t, uint32_t>>::getNodeSize(std::pair<uint32_t, uint32_t>{0u, 0u}); 
+  PoolAllocator<std::pair<uint32_t, uint32_t>, FixedOccupier> alloc1(cLen * 2u, nodeSize, gOccupier1);
+  PoolAllocator<std::pair<uint32_t, uint32_t>, FixedOccupier> alloc2(cLen * 2u, nodeSize, gOccupier2);
+  std::multimap<uint32_t, uint32_t, std::less<uint32_t>, PoolAllocator<std::pair<uint32_t, uint32_t>, FixedOccupier>> tree1(alloc1);
+  std::multimap<uint32_t, uint32_t, std::less<uint32_t>, PoolAllocator<std::pair<uint32_t, uint32_t>, FixedOccupier>> tree2(alloc2);
+
+  for(uint32_t i = 0; i < cLen; ++i) {
+    tree1.insert(std::pair<uint32_t, uint32_t>(i, i));
+    tree2.insert(std::pair<uint32_t, uint32_t>(i, i));
+    tree1.insert(std::pair<uint32_t, uint32_t>(i, i));
+    tree2.insert(std::pair<uint32_t, uint32_t>(i, i));
+  }
+  print("multimap: ", tree1);
+  print("multimap: ", tree2);
+
+  for(uint32_t i = 0; i < cLen; ++i) {
+    tree1.erase(i);
+    tree2.erase(i);
+    tree1.erase(i);
+    tree2.erase(i);
+  }
+  print("multimap: ", tree1);
+  print("multimap: ", tree2);
+
+  for(uint32_t i = 0; i < cLen; ++i) {
+    tree1.insert(std::pair<uint32_t, uint32_t>(i, i));
+    tree2.insert(std::pair<uint32_t, uint32_t>(i, i));
+    tree1.insert(std::pair<uint32_t, uint32_t>(i, i));
+    tree2.insert(std::pair<uint32_t, uint32_t>(i, i));
+  }
+  print("multimap: ", tree1);
+  print("multimap: ", tree2);
+
+  for(uint32_t i = cLen - 1u; i < cLen; --i) {
+    tree1.erase(i);
+    tree2.erase(i);
+    tree1.erase(i);
+    tree2.erase(i);
+  }
+  print("multimap: ", tree1);
+  print("multimap: ", tree2);
+  
+  // for(uint32_t i = 0; i <= cLen; ++i) { // dumps core
+  //  tree1[i] = i;
+  //}
+}
+
 void testCopyMoveSwapFwd() {
   std::cout << "testCopyMoveSwapFwd\n";
   size_t nodeSize = AllocatorBlockGauge<std::forward_list<uint32_t>>::getNodeSize(0u); 
@@ -227,6 +330,8 @@ int main() {
   testList();
   testSet();
   testMap();
+  testMultiSet();
+  testMultiMap();
   testCopyMoveSwapFwd();
   testSwapMap();
   return 0;

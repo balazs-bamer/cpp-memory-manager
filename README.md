@@ -258,7 +258,7 @@ Function                                                                        
 
 ### Long-term pool allocator
 
-This is called `PoolAllocator` and operates using user-supplied memory. It uses a pool of fixed-size blocks linked in a single linked list. It supports `std::forward_list`, `std::list`, `std::map` and `std::set` - so containers with fixed-size allocations.
+This is called `PoolAllocator` and operates using user-supplied memory. It uses a pool of fixed-size blocks linked in a single linked list. It supports `std::forward_list`, `std::list`, `std::map`, `std::multimap`, `std::set` and `std::multiset` - so containers with fixed-size allocations.
 
 Generally, an allocator operates roughly like this:
 
