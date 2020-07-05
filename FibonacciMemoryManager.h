@@ -9,7 +9,7 @@
 #include <array>
 #include <set>
 
-namespace nowtech::memory {
+namespace nowtech { namespace memory {
 
 constexpr size_t countSetBits(size_t aNumber) noexcept { 
   size_t count = 0; 
@@ -27,14 +27,14 @@ constexpr size_t countSetBits(size_t aNumber) noexcept {
 /// };
 template <typename tInterface, size_t tMemorySize, size_t tMinimalBlockSize, size_t tAlignment, size_t tFibonacciIndexDifference, uintptr_t tMemory = 0u>
 class FibonacciMemoryManager final {
-  static_assert(tMemorySize >= 16384);
-  static_assert(tMemorySize % alignof(std::max_align_t) == 0u);
-  static_assert(tMinimalBlockSize % tAlignment == 0u);
-  static_assert(tMinimalBlockSize >= tAlignment * 2u);
-  static_assert(tAlignment >= 4u);
-  static_assert(countSetBits(tAlignment) == 1u);
-  static_assert(tFibonacciIndexDifference > 0u);
-  static_assert(tFibonacciIndexDifference < 9u);
+  static_assert(tMemorySize >= 16384, "User supplied memory must be at least 16 kB.");
+  static_assert(tMemorySize % alignof(std::max_align_t) == 0u, "User supplied memory must be a multiply of the largest system alignment type.");
+  static_assert(tMinimalBlockSize % tAlignment == 0u, "The desired minimal block size must be a multiply of the desired alignment.");
+  static_assert(tMinimalBlockSize >= tAlignment * 2u, "The desired minimal block size must be at least twice the desired alignment.");
+  static_assert(tAlignment >= 4u, "The desired alignment must be at leas 4 bytes.");
+  static_assert(countSetBits(tAlignment) == 1u, "The desired alignment must be a power of 2.");
+  static_assert(tFibonacciIndexDifference > 0u, "The Fibonacci difference must be at least 1.");
+  static_assert(tFibonacciIndexDifference < 9u, "The Fibonacci difference must be less than 9.");
 
 private:
   class FixedOccupier final {
@@ -92,8 +92,8 @@ private:
       return static_cast<FibonacciDirection>(mValue & cMaskDirection);
     }
   };
-  static_assert(sizeof(FibonacciCell) == sizeof(uint8_t));
-  static_assert(alignof(FibonacciCell) == alignof(uint8_t));
+  static_assert(sizeof(FibonacciCell) == sizeof(uint8_t), "Assures that FibonacciCell is 1 byte long.");
+  static_assert(alignof(FibonacciCell) == alignof(uint8_t), "Assures that FibonacciCell has the alignment of a byte.");
 
   class BlockHeader final {
   private:
@@ -123,8 +123,8 @@ private:
                static_cast<uint32_t>(aIndex & cMaskIndex);
     }
   };
-  static_assert(sizeof(BlockHeader) == sizeof(uint32_t));
-  static_assert(alignof(BlockHeader) == alignof(uint32_t));
+  static_assert(sizeof(BlockHeader) == sizeof(uint32_t), "Assures that BlockHeader is 4 bytes long.");
+  static_assert(alignof(BlockHeader) == alignof(uint32_t), "Assures that BlockHeader has the alignment of uint32_t.");
 
   typedef std::set<uint8_t*, std::less<uint8_t*>, PoolAllocator<uint8_t*, FixedOccupier>> FreeSet;
   typedef PoolAllocator<uint8_t*, FixedOccupier>                                          FreeSetAllocator;
@@ -609,6 +609,6 @@ void FibonacciMemoryManager<tInterface, tMemorySize, tMinimalBlockSize, tAlignme
 }
 
 
-}
+} }
 
 #endif

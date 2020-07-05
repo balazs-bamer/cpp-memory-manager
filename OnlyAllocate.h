@@ -5,7 +5,7 @@
 #include <cstdint>
 #include <atomic>
 
-namespace nowtech::memory {
+namespace nowtech { namespace memory {
 
 // class Interface final {
 // public:
@@ -14,8 +14,8 @@ namespace nowtech::memory {
 
 template <typename tInterface, uintptr_t tMemory = 0u, size_t tSize = 0u>
 class OnlyAllocate final {
-  static_assert(tMemory % alignof(std::max_align_t) == 0u);
-  static_assert(tSize   % alignof(std::max_align_t) == 0u);
+  static_assert(tMemory % alignof(std::max_align_t) == 0u, "The user-supplied memory block start must be aligned to the largest system alignment.");
+  static_assert(tSize   % alignof(std::max_align_t) == 0u, "The user-supplied memory block size must be aligned to the largest system alignment.");
 
 private: 
   static std::atomic<uint8_t*> sGetPointer;
@@ -120,6 +120,6 @@ uint8_t* OnlyAllocate<tInterface, tMemory, tSize>::sEnd;
 template <typename tInterface, uintptr_t tMemory, size_t tSize>
 std::atomic<uint8_t*> OnlyAllocate<tInterface, tMemory, tSize>::sGetPointer;
 
-}
+} }
 
 #endif

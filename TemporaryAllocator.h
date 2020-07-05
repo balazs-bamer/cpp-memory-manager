@@ -3,7 +3,7 @@
 
 #include <memory>
 
-namespace nowtech::memory {
+namespace nowtech { namespace memory {
 
 /// Only used to provide an allocator with memory
 /// class Occupier {
@@ -142,6 +142,6 @@ bool operator!=(TemporaryAllocator<tContainerItemA, tInterfaceA> const &aAllocA,
 	return !(aAllocA == aAllocB);
 }
 
-}
+} }
 
 #endif

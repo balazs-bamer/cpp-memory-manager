@@ -7,7 +7,7 @@
 #include <memory>
 #include <forward_list>
 
-namespace nowtech::memory {
+namespace nowtech { namespace memory {
 
 class MeasureAllocatorBase {
 protected:
@@ -335,6 +335,6 @@ bool operator!=(PoolAllocator<tContainerItemA, tInterfaceA> const &aAllocA, Pool
 	return !(aAllocA == aAllocB);
 }
 
-}
+} }
 
 #endif
