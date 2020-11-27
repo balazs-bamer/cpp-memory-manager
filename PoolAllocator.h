@@ -241,9 +241,13 @@ public:
     }
   }
 
-  void* allocate(std::size_t const, size_t aLength) {
+  bool hasFree() noexcept {
+    return mOriginal->mFirst != mOriginal->mProhibited;
+  }
+
+  void* allocate(std::size_t const, size_t) {
     void* result;
-    if(mOriginal->mFirst != mOriginal->mProhibited && aLength <= mOriginal->mNodeSize) {
+    if(mOriginal->mFirst != mOriginal->mProhibited) {
       result = mOriginal->mFirst;
       mOriginal->mFirst = static_cast<void**>(*mOriginal->mFirst);
     }
