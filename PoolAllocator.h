@@ -71,7 +71,7 @@ public:
     return static_cast<tMeasureItem*>(mOriginal->allocate(aCount, sizeof(tMeasureItem)));
   }
 
-  void deallocate(value_type* aPointer, std::size_t aCount) noexcept {
+  void deallocate(value_type*, std::size_t) noexcept {
     // nothing to do
   }
 
@@ -241,7 +241,7 @@ public:
     }
   }
 
-  void* allocate(std::size_t const aCount, size_t aLength) {
+  void* allocate(std::size_t const, size_t aLength) {
     void* result;
     if(mOriginal->mFirst != mOriginal->mProhibited && aLength <= mOriginal->mNodeSize) {
       result = mOriginal->mFirst;
