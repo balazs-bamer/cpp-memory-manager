@@ -101,7 +101,7 @@ public:
 protected:
   static void* allocate(size_t const aSize) {
     uint8_t* pointer = sGetPointer.fetch_add(aSize);
-    if(pointer + aSize > sEnd) {
+    if(aSize > sSize || pointer + aSize > sEnd) {
       tInterface::badAlloc();
       pointer = nullptr;
     }

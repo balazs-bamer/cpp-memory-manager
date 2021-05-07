@@ -1,13 +1,14 @@
 #include "OnlyAllocate.h"
 #include <iomanip>
 #include <iostream>
+#include <stdexcept>
 
 using namespace nowtech::memory;
 
 class Interface final {
 public:
   static void badAlloc() {
-    std::cout << "bad alloc\n";
+    throw std::bad_alloc();
   }
 };
 
@@ -52,6 +53,22 @@ int main() {
   Test* test2 = MinMemMan::_newArray<Test>(2u);
   test2[0].print();
   test2[1].print();
+
+  size_t now = cMemorySize;
+  try {
+    MinMemMan::_newArray<uint8_t>(now);
+  }
+  catch (std::bad_alloc&) {
+    std::cout << "now: " << now << " failed\n";
+  }
+  now = 0xffff'ffff'ffff'ff88;
+  try {
+    MinMemMan::_newArray<uint8_t>(now);
+  }
+  catch (std::bad_alloc&) {
+    std::cout << "now: " << now << " failed\n";
+  }
+
 
   // int* intN = MinMemMan::_newArray<int>(cMemorySize);  // signs bad alloc
 

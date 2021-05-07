@@ -364,7 +364,7 @@ void* FibonacciMemoryManager<tInterface, tMemorySize, tMinimalBlockSize, tAlignm
   size_t smallestSuitableIndex = mFibonacciCount;
   size_t fibonacciIndex = mFibonacciCount;
   size_t sizeWithHeader = aSize + tAlignment;
-  bool failed = (sizeWithHeader < tAlignment || aSize == 0u);
+  bool failed = (sizeWithHeader < tAlignment || aSize == 0u || aSize > mFreeSpace);
   size_t sizeInUnitBlocks = (sizeWithHeader + mBlockSize - 1u) / mBlockSize;
   if(!failed) {
     smallestSuitableIndex = std::upper_bound(mFibonaccis, mFibonaccis + mFibonacciCount, sizeInUnitBlocks) - mFibonaccis;

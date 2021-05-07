@@ -6,13 +6,14 @@
 #include <deque>
 #include <random>
 #include <chrono>
+#include <stdexcept>
 
 using namespace nowtech::memory;
 
 class Interface final {
 public:
   static void badAlloc() {
-    std::cout << "bad alloc\n";
+    throw std::bad_alloc();
   }
   static void lock() {
 //    std::cout << " -=###=- lock\n";
@@ -293,6 +294,35 @@ void benchmarkNewDelete(bool const aExact) {
   delete[] mem;
 }
 
+void testTooLargeRequest() {
+  uint8_t* mem = new uint8_t[cMemorySize];
+
+  ExampleNewDelete::init(reinterpret_cast<void*>(mem), false);
+   
+  std::cout << " getFreeSpace() " << ExampleNewDelete::getFreeSpace() << 
+               " getMaxUserBlockSize() " << ExampleNewDelete::getMaxUserBlockSize() <<
+               " getMaxFreeUserBlockSize() " << ExampleNewDelete::getMaxFreeUserBlockSize() <<
+               " getAlignment() " << ExampleNewDelete::getAlignment() <<
+               "\nChecking if everything freed.\n"; 
+
+  size_t now = cMemorySize;
+  try {
+    ExampleNewDelete::_newArray<uint8_t>(now);
+  }
+  catch (std::bad_alloc&) {
+    std::cout << "now: " << now << " failed\n";
+  }
+  now = 0xffff'ffff'ffff'ff88;
+  try {
+    ExampleNewDelete::_newArray<uint8_t>(now);
+  }
+  catch (std::bad_alloc&) {
+    std::cout << "now: " << now << " failed\n";
+  }
+
+  delete[] mem;
+}
+
 int main() {
   size_t technicalBlockSize;
   size_t maxUserBlockSize;
@@ -312,6 +342,7 @@ int main() {
   testNewDelete(true);
   benchmarkNewDelete(false);
   benchmarkNewDelete(true);
+  testTooLargeRequest();
 
   /*for(size_t i = 0u; i <= maxFibonacci; ++i) {
     size_t size = i * technicalBlockSize - cUserAlign;

@@ -203,7 +203,7 @@ else {
 }
 ```
 
-Allocating a size of 0 or larger than the available space results in a call to `tInterface::badAlloc()` and returning a `nullptr`. This is **not the standard** C++ `new` behavior. The allocation is performed using this algorithm:
+Allocating a size of 0 or larger than the available space results in a call to `tInterface::badAlloc()`. This is **not the standard** C++ `new` behavior. The allocation is performed using this algorithm:
 
 ```C++
 if(exactAllocation) {
@@ -238,7 +238,7 @@ Put the current block in the free list.
 
 #### Error handling
 
-The interface may throw any exception, if the application decides to use exceptions, or use any other way to handle errors, if the application is compiled without exception handling.
+The interface may throw any exception, if the application decides to use exceptions. It may use any other way to handle errors, if the application is compiled without exception handling. **Important:** `OnlyAllocate` and `FibonaccyMemoryManager` **can't be implemented** to return `nullptr` when the allocation fails. So either the application uses exceptions, or it makes sure not to initiate allocation when it wouldn't suceed. The reason is in the object creation mechanmism, which runs even for the possibly resulting `nullptr`, and thus results in accessing memory at 0.
 
 #### API
 
