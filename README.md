@@ -1,51 +1,51 @@
 # cpp-memory-manager
-Crossplatform memory manager providing temporary and long-term pool allocators and new/delete-like support for isolated RAM regions
+Cross-platform memory manager providing temporary and long-term pool allocators and new/delete-like support for isolated RAM regions
 
 ## Requirements
 
-The memory manager was originally intended to supplement the FreeRTOS memory manager for MCUs with medium to large amount of SRAM. Larger MCUs like STM32H7 series come with non-continuous SRAM blocks, of which only one is accessible to the FreeRTOS and the C++ runtime library.
+The memory manager was originally intended to supplement the FreeRTOS memory manager for MCUs with a medium to large amount of SRAM. Larger MCUs, such as the STM32H7 series, come with non-continuous SRAM blocks, of which only one is accessible to the FreeRTOS and the C++ runtime library.
 
 * C++ 14 standard
-* A minimal thread-safe memory manager for allocation but no deallocation.
+* A minimal thread-safe memory manager for allocation, but no deallocation.
 * The general memory manager provides access to these isolated regions. A custom class with static methods for basic `new` and `delete` functionality.
 * The long-term pool allocator provides efficient pools for STL containers to avoid the default allocator using `new` and `delete` here. These pools
   * use space-efficient storage for internal nodes of one or more containers with node size tailored for the contents.
   * provide allocate and deallocate operations with O(1) time and space complexity.
-* The temporary pool allocator is a ringbuffer allocator for temporary containers with
-  * O(1) time and space complexity for allocatewithout any space overhead
+* The temporary pool allocator is a ring buffer allocator for temporary containers with
+  * O(1) time and space complexity for allocation without any space overhead
   * zero-cost deallocate
 
 ## Use cases
 
 ### Only-allocating memory manager
 
-This is intended for allocations on application startup which will never be deallocated.
+This is intended for allocations on application startup, which will never be deallocated.
 
 ### General memory manager
 
-The general memory manager is primarily intended to provide access to otherwise unreachable regions, because of the OS and/or the C++ runtime library does not fully support an MCU architecture. This is **not** a full-featured memory manager, because it does not
+The general memory manager is primarily intended to provide access to otherwise unreachable regions, because the OS and/or the C++ runtime library do not fully support an MCU architecture. This is **not** a full-featured memory manager, because it does not
 
 * support concurrency without application-level locking (see the interface below)
 * support address obfuscation
-* reach the time performance of the C++ runtime library. On average, allocating and freeing a small (1k) block on my Intel(R) Xeon(R) CPU E31220L @ 2.20GHz takes **1.7** us, while the C++ runtime library took **0.6** us.
+* reach the time performance of the C++ runtime library. On average, allocating and freeing a small (1k) block on my Intel(R) Xeon(R) CPU E31220L @ 2.20GHz takes **1.7** microseconds, while the C++ runtime library takes **0.6** microseconds.
 
-However, it provides some tuning parameters and additional diagnostics, which may be essential for memory-constrained platforms. Moreover, it provides known allocate and deallocate time: **O(log n)** in term of total memory provided for the manager.
+However, it provides some tuning parameters and additional diagnostics, which may be essential for memory-constrained platforms. Moreover, it provides known allocate and deallocate time: **O(log n)** in terms of total memory provided for the manager.
 
-Generally, the general memory manager is intended for not too frequent allocations.
+Generally, the general memory manager is intended for infrequent allocations.
 
 ### Long-term pool allocator
 
-This may be allocated on the heap or using the general memory manager on and independent memory region. Its only purpose is to be embedded in STL containers (see below) to achieve blazing-fast node allocation and deallocation. It uses fixed block size given in its constructor. It only requires updating 2 pointers on each operation.
+This may be allocated on the heap or using the general memory manager on an independent memory region. Its only purpose is to be embedded in STL containers (see below) to achieve blazing-fast node allocation and deallocation. It uses a fixed block size given in its constructor. It only requires updating 2 pointers on each operation.
 
 ### Temporary allocator
 
-This is similar to the above one, but even faster: deallocation costs nothing. Moreover, it can serve blocks of arbitrary size without any fragmentation. It is implemented as a ringbuffer, so if it once gets full, the oldest contents are corrupted, hence only suitable as a workspace for short-term computations.
+This is similar to the one above, but even faster: deallocation incurs no costs. Moreover, it can serve blocks of arbitrary size without any fragmentation. It is implemented as a ring buffer, so if it becomes full, the oldest contents are corrupted; hence, it is only suitable as a workspace for short-term computations.
 
 ## Design
 
 ### Only-allocating memory manager
 
-This is rather simple. It only allocates in its buffer as long as there is space left in it, after it it signs error via the template parameter _interface_’s `badAlloc()` call. This may throw an exception or do something else, according to the applicaiton policy.
+This is rather simple. It only allocates in its buffer as long as there is space left in it, after it signs an error via the template parameter _interface_’s `badAlloc()` call. This may throw an exception or perform an alternative action, depending on the application policy.
 
 This implementation is thread-safe. This memory manager gets this information:
 
@@ -57,9 +57,9 @@ class         |_interface_       |template                  |A user-defined inte
 
 ### General memory manager
 
-This is called `FibonacciMemoryManager` and is an implementation of the buddy allocator using generalized Fibonacci numbers instead of powers of 2. This yields much less internal and external fragmentation and lets the user control the fragmentation level vs manager overhead ratio more precisely. See for example [here](https://www.geeksforgeeks.org/operating-system-allocating-kernel-memory-buddy-system-slab-system/).
+This is called `FibonacciMemoryManager` and is an implementation of the buddy allocator using generalised Fibonacci numbers instead of powers of 2. This yields significantly less internal and external fragmentation, allowing the user to control the fragmentation level versus the manager overhead ratio more precisely. See, for example, [here](https://www.geeksforgeeks.org/operating-system-allocating-kernel-memory-buddy-system-slab-system/).
 
-Generalized Fibonacci numbers are formed by adding the last one and the one _D_ steps before last one. Starting sequence is 1 … 1+_D_. So For the ordinary Fibonacci numbers _D_ = 1 and it looks like
+Generalised Fibonacci numbers are formed by adding the last one and the one _D_ steps before the last one. Starting sequence is 1 … 1+_D_. So for the ordinary Fibonacci numbers _D_ = 1, and it looks like
 
 ```C++
 1, 2, 3, 5, 8, 13, 21, 45, 55...
@@ -78,14 +78,14 @@ Later on, I mean generalized Fibonacci numbers on the term Fibonacci. The memory
 Type           | Name             | Where                  | Description
 ---------------|------------------|------------------------|------------------------
 `void*`        |_memory_          |template or constructor |The start address of the block to use for internal accounting and as memory to serve. This must be aligned to `std::max_align_t`. The memory used by `FibonacciMemoryManager` internal fields can be placed here using placement new.
-`bool`         |_exactAllocation_ |constructor             |If true, the system strives to avoid internal fragmentation. If false, the system tries to save bigger blocks for possibly bigger allocations later.
+`bool`         |_exactAllocation_ |constructor             |If true, the system strives to avoid internal fragmentation. If false, the system attempts to save larger blocks for potentially larger allocations later.
 class          |_interface_       |template                |A user-defined interface to sign allocation errors.
 `size_t`       |_memorySize_      |template                |Length of the available memory in bytes. 16384 <= _memorySize_
-`size_t`       |_minimalBlockSize_|template                |Minimum length of an internal block will be a multiple of this and a possible Fibonacci number configured for the system. However, due to internal accounting, only an amount reduced by _alignment_ will be available for user data. Must be a multiple of _alignment_ and at least 2 * _alignment_. The system will choose the real value such that the memory to be served will be maximized.
+`size_t`       |_minimalBlockSize_|template                |Minimum length of an internal block will be a multiple of this and a possible Fibonacci number configured for the system. However, due to internal accounting, only an amount reduced by _alignment_ will be available for user data. Must be a multiple of _alignment_ and at least 2 * _alignment_. The system will choose the real value such that the memory to be served will be maximised.
 `size_t`       |_alignment_       |template                |The alignment of user data to serve, at least 4 bytes.
 `size_t`       |_D_               |template                |See above. 1 <= _D_ < 9
 
-Static assertions will check the above conditions, and part of the internal configuration will be performed compile-time. The interface looks like:
+Static assertions will check the above conditions, and part of the internal configuration will be performed at compile time. The interface looks like:
 
 ```C++
 class Interface {
@@ -98,7 +98,7 @@ public:
 
 Function        | Description
 ----------------|-----------------------
-`badAlloc()`    |Application hook to sign allocation failure or throw exception.
+`badAlloc()`    |Application hook to sign allocation failure or throw an exception.
 `lock()`        |Can be used to start a mutual exclusion path to prevent other threads from concurrent modifications.
 `unlock()`      |Can be used to finish the mutual exclusion path.
 
@@ -106,7 +106,7 @@ Function        | Description
 
 Quantity | Description
 ---------|----------------------------
-_P_      |_F[N-D-2]_ is the maximum amount of free nodes in the buddy tree. For _D_ = 1 and _N_ = 10 it happens when all the _F[0]_ leaves in the buddy tree are occupied and the _F[1]_ are free. Then, _P_ is 34.
+_P_      |_F[N-D-2]_ is the maximum amount of free nodes in the buddy tree. For _D_ = 1 and _N_ = 10, it happens when all the _F[0]_ leaves in the buddy tree are occupied and the _F[1]_ are free. Then, _P_ is 34.
 _T_      |Internal blocksize of the pool, calculated.
 _N_      |Number of Fibonacci numbers, the largest one corresponding to serving the whole memory in one block.
 _R_      |Real blocksize corresponding to _F[0]_, calculated from the above parameters and the space requirement of the internal accounting below.
@@ -115,7 +115,7 @@ _F[i]_   |The ith Fibonacci number, being _F[0]_  = 1 and _F[1]_ = 2.
 #### Internal data structures
 
 ```C++
-enum class FibonacciDirection : uint8_t {
+enum class FibonacciDirection: uint8_t {
   cHere  = 0u << 5u, // assume the index is i
   cLeft  = 1u << 5u, // direction to smaller son, index is i-D-1
   cRight = 2u << 5u  // direction to larger son,  index is i-1  
@@ -138,10 +138,10 @@ Type                  | Name            | Description
 `std::set<void*> [N]` |_freeSets_       |Each set is representing the free leaves of size _F[i]_, 0 <= _i_ < _N_. The sets are implemented using a `PoolAllocator`. The sets store the start of the corresponding blocks.
 `size_t [N]`          |_fibonaccis_     |Cache array holding the Fibonacci numbers.
 `FibonacciCell [N, N]`|_allocDirections_|Table to help allocation algorithm.
-unspecified           |_pool_           |Pool for storing the set nodes. It stores at most _P_ nodes alltogether in all the sets.
+unspecified           |_pool_           |Pool for storing the set nodes. It stores at most _P_ nodes altogether in all the sets.
 unspecified           |_data_           |Blocks to serve.
 
-The system substracts the above data structures from _memorySize_ and uses the remaining space for block storage.
+The system subtracts the above data structures from _memorySize_ and uses the remaining space for block storage.
 
 Moreover, each block contains the following information in its header:
 
@@ -152,12 +152,12 @@ The system returns the pointer to the application without the header.
 
 #### Algorithms
 
-Initially, the set of Fibonacci numbers and corresponding block sizes are calculated:
+Initially, the set of Fibonacci numbers and corresponding block sizes is calculated:
 
 ```C++
 First, the pool block size is measured -> T
 Calculation of N such that memorySize/F[N-1] >= minimalBlockSize
-Calculation of the total header including alignments and the above data structures -> H
+Calculation of the total header, including alignments and the above data structures -> H
 while(header does not fit in memory or memorySize - F[N0-1]*minimalBlockSize >= H) {
   --N
   recalculate H
@@ -165,20 +165,20 @@ while(header does not fit in memory or memorySize - F[N0-1]*minimalBlockSize >= 
 }
 ```
 
-The data structures are initialized such that there is only free block of the largest possible size. A fundamental principe of a buddy allocator is to maintain the largest possible free blocks by coalescing the just deallocated ones, if possible.
+The data structures are initialised such that there is only one free block of the largest possible size. A fundamental principle of a buddy allocator is to maintain the largest possible free blocks by coalescing the just-deallocated ones, if possible.
 
 This implementation is **not thread safe**.
 
-The `FibonacciMemoryManager` class may be instantiated on the beginning of the memory region it is given in the constructor. It is at least prepared to leave the start of the memory intact to let this happen.
+The `FibonacciMemoryManager` class may be instantiated at the beginning of the memory region it is given in the constructor. It is at least prepared to leave the start of the memory intact, allowing this to happen.
 
 ##### Allocation
 
 The allocation algorithm supports two strategies:
 
-* Exact allocation requires each requested block to be fulfilled with the smallest possible block available, or obtained by dividing a larger one. This minimizes internal fragmentation on the expense of sacrificing larger block possibly important for bigger requests.
+* Exact allocation requires each requested block to be fulfilled with the smallest possible block available, or obtained by dividing a larger one. This minimises internal fragmentation at the expense of sacrificing a larger block, which may be important for larger requests.
 * Cautious allocation saves the larger blocks for the future, but may return bigger blocks than desired. However, this effect can happen only for small blocks.
 
-I use a helper table called _allocDirections_ to decide how the blocks should be divided or choosed. This is an _N * N_ matrix, with the first index is the Fibonacci index of the block to be divided, the second one is the required block size. This is calculated during initialization:
+I use a helper table called _allocDirections_ to decide how the blocks should be divided or chosen. This is an _N * N_ matrix, with the first index being the Fibonacci index of the block to be divided, and the second one being the required block size. This is calculated during initialisation:
 
 ```C++
 First, the main diagonal is filled by the info <here, exact>.
@@ -203,18 +203,18 @@ else {
 }
 ```
 
-Allocating a size of 0 or larger than the available space results in a call to `tInterface::badAlloc()`. This is **not the standard** C++ `new` behavior. The allocation is performed using this algorithm:
+Allocating a size of 0 or larger than the available space results in a call to `tInterface::badAlloc()`. This is **not the standard** C++ `new` behaviour. The allocation is performed using this algorithm:
 
 ```C++
 if(exactAllocation) {
-  search for the smallest Fibonacci index i with exact match for the requested block size
+  search for the smallest Fibonacci index i with an exact match for the requested block size
 }
 else { // nothing to do
 }
 if none found, search for the smallest available and large enough i
 if(found an i) {
   remove the smallest pointer from the freeSets[i]
-  split the block if needed according to the chain in allocDirections[i, requested index]
+  split the block if needed, according to the chain in allocDirections[i, requested index]
   // splitting happens using the algorithm in the above 1975 paper
   return the final block
 }
@@ -228,7 +228,7 @@ else {
 Deallocation happens by putting back the returned block into the corresponding set and potentially coalescing it with its free buddies, if any:
 
 ```C++
-Recover the block address from the application pointer (substract header size).
+Recover the block address from the application pointer (subtract header size).
 while (the actual block has a free buddy and is not on the N-1 level) {
   remove the buddy from the free list
   make the coalesced block the current one
@@ -238,23 +238,23 @@ Put the current block in the free list.
 
 #### Error handling
 
-The interface may throw any exception, if the application decides to use exceptions. It may use any other way to handle errors, if the application is compiled without exception handling. **Important:** `OnlyAllocate` and `FibonaccyMemoryManager` **can't be implemented** to return `nullptr` when the allocation fails. So either the application uses exceptions, or it makes sure not to initiate allocation when it wouldn't suceed. The reason is in the object creation mechanmism, which runs even for the possibly resulting `nullptr`, and thus results in accessing memory at 0.
+The interface may throw any exception if the application decides to use exceptions. It may use an alternative method to handle errors if the application is compiled without exception handling. **Important:** `OnlyAllocate` and `FibonaccyMemoryManager` **can't be implemented** to return `nullptr` when the allocation fails. So, either the application uses exceptions or it ensures that allocation is not initiated when it would fail. The reason is in the object creation mechanism, which runs even for the possibly resulting `nullptr`, and thus results in accessing memory at 0.
 
 #### API
 
-The `FibonacciMemoryManager` class is not intended for end-use, although it can provide a `malloc-free`-like C level API. The public API of the memory manager is the templated `NewDelete` class, which uses exactly the same template parameters as the `FibonacciMemoryManager` class. Its public methods are. Examples are shown in the usage section.
+The `FibonacciMemoryManager` class is not intended for end-use, although it can provide a `malloc-free`-like C-level API. The public API of the memory manager is the templated `NewDelete` class, which uses exactly the same template parameters as the `FibonacciMemoryManager` class. Its public methods are. Examples are shown in the usage section.
 
 Function                                                                                                  | Description
 ----------------------------------------------------------------------------------------------------------|------------------------------------------------
-`template<typename tClass, typename ...tParameters> static tClass* _new(tParameters... aParameters)`      |Like `void* operator new()` it creates an object and calls its constructor using the given parameters. It uses the template parameter as alignment.
-`template<typename tClass> static tClass* _newArray(size_t const aCount)`                                 |Like `void* operator new(size_t)` it creates an object and calls its default constructor. It uses the template parameter as the alignment of the array start.
-`template<typename tClass> static void _delete(tClass* aPointer)`                                         |Like `void delete void*` it calls the object destructor and deallocates the object.
-`template<typename tClass> static void _deleteArray(tClass* aPointer)`                                    |Like `void delete[] void*` it calls the object destructor and deallocates the object.
-`static size_t getFreeSpace() noexcept`                                                                   |Returns the total remaining space. Note, due to external fragmentation, it is probably not available in one block or in a size the application would desire.
+`template<typename tClass, typename ...tParameters> static tClass* _new(tParameters... aParameters)`      |Like `void* operator new()`, it creates an object and calls its constructor using the given parameters. It uses the template parameter as alignment.
+`template<typename tClass> static tClass* _newArray(size_t const aCount)`                                 |Like `void* operator new(size_t),` it creates an object and calls its default constructor. It uses the template parameter as the alignment of the array start.
+`template<typename tClass> static void _delete(tClass* aPointer)`                                         |Like `void delete void*,` it calls the object destructor and deallocates the object.
+`template<typename tClass> static void _deleteArray(tClass* aPointer)`                                    |Like `void delete[] void*`, it calls the object destructor and deallocates the object.
+`static size_t getFreeSpace() noexcept`                                                                   |Returns the total remaining space. Note that, due to external fragmentation, it is likely not available in a single block or in a size that the application would desire.
 `static size_t getMaxUserBlockSize()`                                                                     |Returns the size of the largest block when nothing has been allocated.
 `static size_t getMaxFreeUserBlockSize() noexcept`                                                        |Returns the size of the largest available block.
 `static size_t getAlignment() noexcept`                                                                   |Returns the alignment used for block allocation.
-`static bool isCorrectEmpty() noexcept`                                                                   |Checks if the memory manager is empty and its internal accounting corresponds the empty state. Should be called when every content is considered to be freed.
+`static bool isCorrectEmpty() noexcept`                                                                   |Checks if the memory manager is empty and its internal accounting corresponds to the empty state. It should be called when all content is considered to be free.
 
 ### Long-term pool allocator
 
@@ -263,9 +263,9 @@ This is called `PoolAllocator` and operates using user-supplied memory. It uses 
 Generally, an allocator operates roughly like this:
 
 1. It has at least one template parameter, initially the stored type of the container. This has rather a theoretical significance, at least for the above containers. As I saw, it is also instantiated.
-1. A practical one with the template parameter for the container node (internal to the STL implementation) is derived using template magic and instantiated using the previous one. Therefore, it needs at least a copy constructor for an other type.
+1. A practical one with the template parameter for the container node (internal to the STL implementation) is derived using template magic and instantiated using the previous one. Therefore, it needs at least a copy constructor for another type.
 1. This is then copied or moved when the container gets copied or moved.
-1. Upon container destruction the allocator will be required to free its contents.
+1. Upon container destruction, the allocator will be required to free its contents.
 
 The `PoolAllocator` must know the block size in advance. However, the STL containers can’t be queried for that info. The user will provide it either
 
@@ -274,9 +274,9 @@ The `PoolAllocator` must know the block size in advance. However, the STL contai
 
 The constructor gets this information along with the maximal node count to store and the `Occupier` instance (see later).
 
-The `PoolAllocator` is **not** a complete C++ allocator. It does not define copy and move constructors in a correct way, so the containers using it can't copy, move or swap themselves. Using these operations **will result in system hang**. I have made this deceison to make the implementation predictable in time consumption and avoid additional memory requirements.
+The `PoolAllocator` is **not** a complete C++ allocator. It does not define copy and move constructors correctly, so containers using it can't copy, move, or swap themselves. Using these operations **will result in a system hang**. I have made this decision to ensure the implementation is predictable in terms of time consumption and to avoid additional memory requirements.
 
-Currently this allocator does not support any other alignment than what is implicitely provided by aligning to `void*` type. For embedded applications and most other cases this will suffice. This simplification is required for the small and efficient implementation important for embedded usage.
+Currently, this allocator does not support any other alignment than what is implicitly provided by aligning to the `void*` type. For embedded applications and most other cases, this will suffice. This simplification is required for the small and efficient implementation important for embedded usage.
 
 The `PoolAllocator` uses a custom class to manage its pool allocation and deallocation:
 
@@ -288,22 +288,22 @@ public:
   void* occupy(size_t const aSize) noexcept;
   void release(void* const aPointer) noexcept;
   
-  // May throw exception or do something else.
+  // May throw an exception or do something else.
   static void badAlloc();
 };
 ```
 
-The `PoolAllocator` manages its memory area in blocks. Beginning of each block is a pointer to the next one the rest is data the node. For sake of simplicity, _node count_ + 1 blocks will be used internally, so one free always remains. The `PoolAllocator` constructor calculates how much memory it needs to occupy via `Occupier` and then initializes the linked list. This will take O(_node count_) time.
+The `PoolAllocator` manages its memory area in blocks. The beginning of each block is a pointer to the next block, and the rest of the data is stored in the node. For the sake of simplicity, _node count_ + 1 blocks will be used internally, so one free block always remains. The `PoolAllocator` constructor calculates the amount of memory it needs to occupy via `Occupier` and then initialises the linked list. This will take O(_node count_) time.
 
-The allocator returns `nullptr` if it runs out of space or the size of requested item is larger than the node size.
+The allocator returns `nullptr` if it runs out of space or the size of the requested item is larger than the node size.
 This implementation is not thread-safe.
 Error handling
 
-The Occupier may throw any exception, if the application decides to use exceptions, or use any other way to handle errors, if the application is compiled without exception handling.
+The Occupier may raise any exception if the application decides to use exceptions or employ an alternative method to handle errors, provided the application is compiled without exception handling.
 
 ### Temporary allocator
 
-Quite similar to the long-term pool allocator, but uses a ringbuffer and the deallocator does nothing. It signs error in a similar way to the other allocator only if the application tries to allocate a block larger than half the ringbuffer size.
+Quite similar to the long-term pool allocator, but it uses a ring buffer, and the deallocator does nothing. It generates an error in a similar way to the other allocator, only if the application attempts to allocate a block larger than half the ring buffer size.
 
 The idea is taken from chapter 10.5 in Christopher Kormanyos’s Real-Time C++ Efficient Object-Oriented and Template Microcontroller Programming (Second Edition).
 
@@ -374,10 +374,10 @@ public:
     throw std::bad_alloc();
   }
   static void lock() {
-    // place to start mutual exclusion if used in multithreaded environemnt
+    // place to start mutual exclusion if used in a multithreaded environment
   }
   static void unlock() {
-    // place to finish mutual exclusion if used in multithreaded environemnt
+    // place to finish mutual exclusion if used in a multithreaded environment
   }
 };
 
@@ -405,7 +405,7 @@ int main() {
 
 #### Allocating and using STL containers
 
-This is a complex example, please also refer the below chapter on `PoolAllocator`. This example uses the custom memory region starting at `cAddress` for everything.
+This is a complex example; please also refer to the chapter below on `PoolAllocator`. This example uses the custom memory region starting at `cAddress` for everything.
 
 ```C++
 class Interface final {
@@ -414,10 +414,10 @@ public:
     throw std::bad_alloc();
   }
   static void lock() {
-    // place to start mutual exclusion if used in multithreaded environemnt
+    // place to start mutual exclusion if used in a multithreaded environment
   }
   static void unlock() {
-    // place to finish mutual exclusion if used in multithreaded environemnt
+    // place to finish mutual exclusion if used in a multithreaded environment
   }
 };
 
@@ -482,7 +482,7 @@ int main() {
 ```C++
 constexpr size_t cPoolSize = 5u;
 
-// Designate a memory region to use. Here it is shared memory:
+// Designate a memory region to use. Here it is, shared memory:
 constexpr std::uintptr_t cMem1 = 0x7fdb6d830000;
 
 // Define an Occupier for using it:
